@@ -1,0 +1,53 @@
+# Binários Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+tmp/
+
+# Arquivos de ambiente (nunca subir para o git)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Chave privada JWT (NUNCA no git)
+gateway/keys/private.pem
+
+# Dependências Node
+node_modules/
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Cobertura de testes
+coverage.out
+coverage.html
+*.coverprofile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.docker/
+
+# Terraform estado (sensível)
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+

@@ -1,0 +1,104 @@
+name: CI - Testes e Validação de Qualidade
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+
+  # ── 1. Testes Automatizados dos Microsserviços Go ─────────
+  backend-tests:
+    name: Testes Go (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - auth-service
+          - catalog-service
+          - order-service
+          - payment-service
+          - notify-service
+          - gateway
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Rodar Testes Unitários com Cobertura
+        working-directory: ${{ matrix.service == 'gateway' && 'gateway' || format('services/{0}', matrix.service) }}
+        run: |
+          go test -v -coverprofile=coverage.out ./...
+
+      - name: Upload de Relatório de Cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.service }}
+          path: ${{ matrix.service == 'gateway' && 'gateway' || format('services/{0}', matrix.service) }}/coverage.out
+          retention-days: 7
+
+  # ── 2. Validação de Build do Frontend React ───────────────
+  frontend-build:
+    name: Build Frontend (TypeScript + Vite)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Instalar Dependências (pnpm)
+        working-directory: frontend
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Compilar Frontend (Typecheck e Bundle Vite via pnpm)
+        working-directory: frontend
+        run: pnpm run build
+
+  # ── 3. Validação de Build das Imagens Docker ──────────────
+  docker-build-check:
+    name: Docker Build Validation (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-build]
+    strategy:
+      matrix:
+        target:
+          - { name: 'auth', path: 'services/auth-service' }
+          - { name: 'catalog', path: 'services/catalog-service' }
+          - { name: 'order', path: 'services/order-service' }
+          - { name: 'payment', path: 'services/payment-service' }
+          - { name: 'notify', path: 'services/notify-service' }
+          - { name: 'gateway', path: 'gateway' }
+          - { name: 'frontend', path: 'frontend' }
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validar Build da Imagem Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.target.path }}
+          push: false
+          tags: commerce-${{ matrix.target.name }}:test
+

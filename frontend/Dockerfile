@@ -3,12 +3,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml* package-lock.json* ./
-RUN npm install
+# Ativa o pnpm nativamente via Corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Cache de dependências do pnpm
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 
-RUN npm run build
+RUN pnpm run build
 
 # ── Stage 2: Runtime com nginx ─────────────────────────────
 FROM nginx:alpine
@@ -28,4 +32,3 @@ RUN echo 'server { \
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
-

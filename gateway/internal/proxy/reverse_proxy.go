@@ -26,4 +26,3 @@ func NewReverseProxy(targetURL string) (http.Handler, error) {
 
 	return proxy, nil
 }
-

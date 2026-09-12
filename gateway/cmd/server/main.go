@@ -124,4 +124,3 @@ func loadOrGenerateRSAPublicKey(pubPath string) (*rsa.PublicKey, error) {
 	}
 	return &priv.PublicKey, nil
 }
-
